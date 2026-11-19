@@ -54,7 +54,11 @@ func ruleazaNod(id int, token int, in <-chan []Memory, out chan<- Memory) {
 	mem[Info{ID: id, Value: token}] = struct{}{}
 
 	for {
-		out <- mem
+		copie := make(Memory)
+		for info := range mem {
+			copie[info] = struct{}{}
+		}
+		out <- copie
 
 		mesaje, ok := <-in
 		if !ok {
