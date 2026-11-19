@@ -49,20 +49,16 @@ func diametru(adj [][]int) int {
 	return diam
 }
 
-func ruleazaNod(id int, token int, in <-chan []Memory, out chan<- Memory, gata chan<- bool) {
+func ruleazaNod(id int, token int, in <-chan []Memory, out chan<- Memory) {
 	mem := make(Memory)
 	mem[Info{ID: id, Value: token}] = struct{}{}
 
 	for {
-		copie := make(Memory)
-		for info := range mem {
-			copie[info] = struct{}{}
-		}
-		out <- copie
+		out <- mem
 
 		mesaje, ok := <-in
 		if !ok {
-			return 
+			return
 		}
 
 		for i := 0; i < len(mesaje); i++ {
@@ -70,25 +66,20 @@ func ruleazaNod(id int, token int, in <-chan []Memory, out chan<- Memory, gata c
 				mem[info] = struct{}{}
 			}
 		}
-
-		gata <- true
 	}
 }
 
 func floodSet(n int, s int, diam int, tokens []int, adj [][]int) (int, Memory) {
 	in := make([]chan []Memory, n)
 	out := make([]chan Memory, n)
-	gata := make([]chan bool, n)
 	crashed := make([]bool, n)
 
-	// pornim nodurile
 	for i := 0; i < n; i++ {
 		in[i] = make(chan []Memory)
 		out[i] = make(chan Memory)
-		gata[i] = make(chan bool)
 		crashed[i] = false
 
-		go ruleazaNod(i, tokens[i], in[i], out[i], gata[i])
+		go ruleazaNod(i, tokens[i], in[i], out[i])
 	}
 
 	t := 0
@@ -107,6 +98,7 @@ func floodSet(n int, s int, diam int, tokens []int, adj [][]int) (int, Memory) {
 					victima := active[rand.Intn(len(active))]
 					crashed[victima] = true
 					crashedCount++
+					<-out[victima]
 					close(in[victima])
 				}
 			}
@@ -130,16 +122,9 @@ func floodSet(n int, s int, diam int, tokens []int, adj [][]int) (int, Memory) {
 			}
 		}
 
-		// trimitem inbox urile
 		for i := 0; i < n; i++ {
 			if !crashed[i] {
 				in[i] <- inbox[i]
-			}
-		}
-
-		for i := 0; i < n; i++ {
-			if !crashed[i] {
-				<-gata[i]
 			}
 		}
 
@@ -149,7 +134,6 @@ func floodSet(n int, s int, diam int, tokens []int, adj [][]int) (int, Memory) {
 		t++
 	}
 
-	// luam o memorie finala oarecare
 	var memFinala Memory
 	for i := 0; i < n; i++ {
 		if !crashed[i] {
@@ -199,7 +183,7 @@ func main() {
 
 	diam := diametru(adj)
 	if diam == -1 {
-		fmt.Println("Graful nu este tare conex.")
+		fmt.Println("Graful nu e tare conex") 
 		return
 	}
 
